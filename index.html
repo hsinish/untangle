@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Bubble Concept Map 思緒泡泡 </title>
-    <meta name="description" content="可以自由拖拉、建立想法關聯的發想工具。">
+    <title>Untangle </title>
+    <meta name="description" content="整理混亂思緒的工具。">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #f4f4f2; font-family: sans-serif; }
@@ -104,7 +104,7 @@
 <script>
     const width = window.innerWidth, height = window.innerHeight;
     const baseRadius = 45, growth = 1.05;
-    const DEFAULT_TEXT = "新概念";
+    const DEFAULT_TEXT = "New thoughts";
     
     const colorPalette = [
         "#AAB1B7", "#8BA8C1", "#679BBF", "#4EA5A5", "#57B18A", "#8AB96E", "#BDB45D", "#D4A252", 
@@ -495,7 +495,7 @@
             update();
         } else {
             const startX = width/2, startY = height/2;
-            nodes = [{ id: 0, text: "核心概念", count: 0, x: startX, y: startY, fx: startX, fy: startY, isEditing: false }];
+            nodes = [{ id: 0, text: "Thought", count: 0, x: startX, y: startY, fx: startX, fy: startY, isEditing: false }];
             update();
         }
     }
