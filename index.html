@@ -45,6 +45,7 @@
             display: none; 
             -webkit-appearance: none;
             z-index: 1001;
+            font-size: 16px; 
         }
 
         .link-line { stroke-width: 3px; stroke-linecap: round; stroke-opacity: 0.3; fill: none; transition: stroke-opacity 0.2s; }
@@ -98,7 +99,7 @@
 </div>
 
 <div id="editing-layer">
-    <input type="text" id="global-input" class="bubble-input" spellcheck="false">
+    <input type="text" id="global-input" class="bubble-input" spellcheck="false" inputmode="text">
 </div>
 
 <div id="toast" class="toast">已儲存！</div>
@@ -141,12 +142,13 @@
     function getRadius(d) { return baseRadius * Math.pow(growth, Math.min(d.count || 0, 100)); }
     function getLevelColor(count) { return colorPalette[Math.min(count || 0, 19)]; }
     function getGradId(d) { 
-        const s = d.source.id !== undefined ? d.source.id : d.source;
-        const t = d.target.id !== undefined ? d.target.id : d.target;
+        const s = (d.source && d.source.id !== undefined) ? d.source.id : d.source;
+        const t = (d.target && d.target.id !== undefined) ? d.target.id : d.target;
         return `grad-${s}-${t}`; 
     }
 
     function update() {
+        // 更新梯度定義
         const gradients = defs.selectAll(".link-gradient").data(links, d => getGradId(d));
         gradients.exit().remove();
         gradients.enter().append("linearGradient").attr("class", "link-gradient").attr("id", d => getGradId(d)).attr("gradientUnits", "userSpaceOnUse")
@@ -155,6 +157,7 @@
                 g.append("stop").attr("offset", "90%").attr("class", "stop-end"); 
             });
 
+        // 更新連線圖層
         const linkGroups = linkLayer.selectAll(".link-group").data(links, d => getGradId(d));
         linkGroups.exit().remove();
         const lgEnter = linkGroups.enter().append("g").attr("class", "link-group");
@@ -166,16 +169,22 @@
         lgEnter.append("line").attr("class", "link-line");
         linkLayer.selectAll(".link-line").classed("selected", d => getGradId(d) === selectedLinkId);
 
+        // 更新連線刪除按鈕
         const linkDeleteBtns = topUiLayer.selectAll(".link-delete-btn").data(links, d => getGradId(d));
         linkDeleteBtns.exit().remove();
         linkDeleteBtns.enter().append("g").attr("class", "link-delete-btn delete-btn-group").on("click", (e, d) => { 
-            e.stopPropagation(); links = links.filter(l => l !== d); selectedLinkId = null; recalculateCounts(); update(); 
+            e.stopPropagation(); 
+            links = links.filter(l => l !== d); 
+            selectedLinkId = null; 
+            recalculateCounts(); 
+            update(); 
         }).call(g => { 
             g.append("circle").attr("class", "delete-btn-circle").attr("r", 14); 
             g.append("text").attr("class", "delete-btn-text").text("×").attr("text-anchor", "middle").attr("dy", 6); 
         });
         topUiLayer.selectAll(".link-delete-btn").classed("visible", d => getGradId(d) === selectedLinkId);
 
+        // 更新節點本體
         const nodeCircles = nodeLayer.selectAll(".node-circle").data(nodes, d => d.id);
         nodeCircles.exit().remove();
         const cEnter = nodeCircles.enter().append("g").attr("class", "node-circle")
@@ -198,10 +207,14 @@
             );
         cEnter.append("circle").attr("class", "main-circle");
 
+        // 更新文字與UI圖層
         const nodeGroups = textLayer.selectAll(".node-group").data(nodes, d => d.id);
         nodeGroups.exit().remove();
         const uiEnter = nodeGroups.enter().append("g").attr("class", "node-group").attr("data-id", d => d.id);
-        uiEnter.append("circle").attr("class", "node-delete-trigger").attr("r", 14).on("click", (e, d) => { e.stopPropagation(); deleteNode(d); });
+        uiEnter.append("circle").attr("class", "node-delete-trigger").attr("r", 14).on("click", (e, d) => { 
+            e.stopPropagation(); 
+            deleteNode(d); 
+        });
         uiEnter.append("text").attr("class", "node-delete-x").text("×").attr("text-anchor", "middle").attr("dy", 5);
         uiEnter.append("text").attr("class", "bubble-label");
 
@@ -223,24 +236,34 @@
                 .style("opacity", (editingNode === d) ? 0 : 1);
         });
 
+        // 重要：重新通知模擬引擎數據已變動
         simulation.nodes(nodes);
         simulation.force("link").links(links);
         simulation.alpha(0.1).restart();
     }
 
     function ticked() {
-        linkLayer.selectAll(".link-line").attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y).attr("stroke", d => `url(#${getGradId(d)})`);
-        linkLayer.selectAll(".link-hitbox").attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-        topUiLayer.selectAll(".link-delete-btn").attr("transform", d => `translate(${(d.source.x + d.target.x) / 2}, ${(d.source.y + d.target.y) / 2})`);
+        linkLayer.selectAll(".link-line")
+            .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x).attr("y2", d => d.target.y)
+            .attr("stroke", d => `url(#${getGradId(d)})`);
+        
+        linkLayer.selectAll(".link-hitbox")
+            .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+        
+        topUiLayer.selectAll(".link-delete-btn")
+            .attr("transform", d => `translate(${(d.source.x + d.target.x) / 2}, ${(d.source.y + d.target.y) / 2})`);
+        
         nodeLayer.selectAll(".node-circle").attr("transform", d => `translate(${d.x},${d.y})`);
         textLayer.selectAll(".node-group").attr("transform", d => `translate(${d.x},${d.y})`);
+        
         if (sourceNode) drawGuideline();
         if (editingNode) updateInputPosition();
     }
 
     function handleNodeClick(e, d) {
         if (isSpaceDown) return;
-        
         if (sourceNode && sourceNode !== d) {
             handleConnect(d);
         } else if (sourceNode === d) {
@@ -256,16 +279,16 @@
     function startEditing(d) {
         if (editingNode === d) return;
         editingNode = d;
-        update(); 
-        
         globalInput.value = d.text;
         globalInput.style.display = 'block';
         updateInputPosition();
-        
+        globalInput.focus();
         setTimeout(() => {
-            globalInput.focus();
-            globalInput.setSelectionRange(0, globalInput.value.length);
-        }, 50);
+            if (globalInput.setSelectionRange) {
+                globalInput.setSelectionRange(0, globalInput.value.length);
+            }
+        }, 0);
+        update(); 
     }
 
     function updateInputPosition() {
@@ -274,7 +297,6 @@
         const screenX = editingNode.x * transform.k + transform.x;
         const screenY = editingNode.y * transform.k + transform.y;
         const r = getRadius(editingNode) * transform.k;
-        
         globalInput.style.left = `${screenX}px`;
         globalInput.style.top = `${screenY}px`;
         globalInput.style.width = `${Math.max(120, r * 1.8)}px`;
@@ -306,8 +328,8 @@
     function handleConnect(d) {
         if (!sourceNode) return;
         const exists = links.some(l => {
-            const sId = l.source.id !== undefined ? l.source.id : l.source;
-            const tId = l.target.id !== undefined ? l.target.id : l.target;
+            const sId = (l.source && l.source.id !== undefined) ? l.source.id : l.source;
+            const tId = (l.target && l.target.id !== undefined) ? l.target.id : l.target;
             return (sId === sourceNode.id && tId === d.id) || (sId === d.id && tId === sourceNode.id);
         });
         if (!exists && sourceNode !== d) { 
@@ -361,20 +383,33 @@
     function recalculateCounts() { 
         nodes.forEach(n => {
             n.count = links.filter(l => {
-                const sId = l.source.id !== undefined ? l.source.id : l.source;
-                const tId = l.target.id !== undefined ? l.target.id : l.target;
+                const sId = (l.source && l.source.id !== undefined) ? l.source.id : l.source;
+                const tId = (l.target && l.target.id !== undefined) ? l.target.id : l.target;
                 return sId === n.id || tId === n.id;
             }).length;
         }); 
     }
 
     function deleteNode(node) { 
+        // 從節點列表移除
         nodes = nodes.filter(n => n !== node); 
+        // 從連線列表移除所有相關連線
         links = links.filter(l => {
-            const sId = l.source.id !== undefined ? l.source.id : l.source;
-            const tId = l.target.id !== undefined ? l.target.id : l.target;
+            const sId = (l.source && l.source.id !== undefined) ? l.source.id : l.source;
+            const tId = (l.target && l.target.id !== undefined) ? l.target.id : l.target;
             return sId !== node.id && tId !== node.id;
         }); 
+        
+        // 如果正在編輯該節點，關閉輸入框
+        if (editingNode === node) {
+            editingNode = null;
+            globalInput.style.display = 'none';
+        }
+        
+        // 重設選中狀態
+        if (sourceNode === node) sourceNode = null;
+        selectedLinkId = null;
+        
         recalculateCounts(); 
         update(); 
     }
