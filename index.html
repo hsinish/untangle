@@ -2,90 +2,92 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Untangle </title>
+    <title>Untangle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Untangle your messy thoughts.">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f4f4f2; font-family: sans-serif; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #f4f4f2; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: none; 
+            -webkit-user-select: none;
+        }
         svg { width: 100vw; height: 100vh; display: block; cursor: grab; }
         svg:active { cursor: grabbing; }
         
-        /* 線段樣式 */
-        .link-line { 
-            stroke-width: 3px; 
-            stroke-linecap: round;
-            stroke-opacity: 0.3;
-            fill: none;
-            cursor: pointer;
-            transition: stroke-opacity 0.2s, stroke-width 0.2s;
-        }
-        /* 線段感應區域 */
-        .link-hitbox {
-            fill: none;
-            stroke: transparent;
-            stroke-width: 20px;
-            cursor: pointer;
-        }
-        .link-line.selected { stroke-opacity: 0.9; stroke-width: 5px; stroke: #222 !important; }
-        .link-group:hover .link-line { stroke-opacity: 0.6; }
-        
-        .guideline { 
-            stroke-width: 2px; 
+        #editing-layer {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
             pointer-events: none; 
-            opacity: 0.6; 
-            stroke-linecap: round; 
-            stroke-dasharray: 5,5; 
+            z-index: 1000;
         }
-
         .bubble-input {
-            background: rgba(255, 255, 255, 0.3); border: 1px solid rgba(255,255,255,0.4); 
-            text-anchor: middle; text-align: center; outline: none; width: 100%; font-weight: bold; color: white;
-            padding: 2px 0; margin: 0; cursor: text; border-radius: 4px;
+            position: absolute;
+            background: #fff; 
+            border: 2px solid #000; 
+            text-align: center; 
+            outline: none; 
+            font-weight: bold; 
+            color: #000;
+            padding: 8px; 
+            margin: 0; 
+            cursor: text; 
+            border-radius: 12px;
+            pointer-events: auto; 
+            transform: translate(-50%, -50%);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: none; 
+            -webkit-appearance: none;
+            z-index: 1001;
         }
 
-        .bubble-label {
-            pointer-events: all; fill: white; font-weight: bold; text-anchor: middle;
-            user-select: none; cursor: text;
+        .link-line { stroke-width: 3px; stroke-linecap: round; stroke-opacity: 0.3; fill: none; transition: stroke-opacity 0.2s; }
+        .link-hitbox { fill: none; stroke: transparent; stroke-width: 30px; cursor: pointer; pointer-events: all; }
+        .link-line.selected { stroke-opacity: 0.9; stroke-width: 5px; stroke: #222 !important; }
+        
+        .guideline { stroke-width: 2px; pointer-events: none; opacity: 0.6; stroke-linecap: round; stroke-dasharray: 5,5; }
+        
+        .bubble-label { 
+            pointer-events: none; 
+            fill: white; 
+            font-weight: bold; 
+            text-anchor: middle; 
+            user-select: none; 
         }
 
-        /* 泡泡主體 */
-        .node-circle circle.main-circle { cursor: pointer; }
-        .node-circle.selected circle.main-circle { stroke: #000; stroke-width: 3px; }
+        .node-circle circle.main-circle { cursor: pointer; pointer-events: all; }
+        .node-circle.selected circle.main-circle { stroke: #000; stroke-width: 4px; }
 
-        /* 線段刪除按鈕 */
-        .delete-btn-group { cursor: pointer; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .delete-btn-group { cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
         .delete-btn-group.visible { opacity: 1; pointer-events: all; }
-        .delete-btn-circle { fill: #ff4d4f; transition: transform 0.2s; }
-        .delete-btn-group:hover .delete-btn-circle { transform: scale(1.2); }
-        .delete-btn-text { fill: white; font-size: 14px; font-weight: bold; pointer-events: none; }
+        .delete-btn-circle { fill: #ff4d4f; }
+        .delete-btn-text { fill: white; font-size: 16px; font-weight: bold; pointer-events: none; }
 
-        /* 節點刪除按鈕 */
-        .node-delete-trigger { fill: #ff4d4f; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
-        .node-group:hover .node-delete-trigger { opacity: 1; }
-        .node-delete-x { fill: white; font-size: 10px; pointer-events: none; font-weight: bold; opacity: 0; transition: opacity 0.2s; }
-        .node-group:hover .node-delete-x { opacity: 1; }
+        .node-delete-trigger { fill: #ff4d4f; cursor: pointer; opacity: 0; pointer-events: all; }
+        .node-group:hover .node-delete-trigger, .node-group:active .node-delete-trigger { opacity: 1; }
+        .node-delete-x { fill: white; font-size: 12px; pointer-events: none; font-weight: bold; opacity: 0; }
+        .node-group:hover .node-delete-x, .node-group:active .node-delete-x { opacity: 1; }
 
-        .controls {
-            position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 2000;
+        .controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; z-index: 2000; }
+        .btn { 
+            padding: 12px 20px; border-radius: 30px; border: none; cursor: pointer; 
+            background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            font-weight: bold; color: #555; font-size: 14px;
         }
-        .btn {
-            padding: 10px 18px; border-radius: 25px; border: none; cursor: pointer;
-            background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            font-weight: bold; color: #555; transition: all 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .btn-save { background: #000; color: white; }
-        .btn-save:hover { background: #333; }
-        .btn-clear:hover { background: #ff4d4f; color: #fff; }
-
-        .toast {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8); color: white; padding: 12px 24px;
-            border-radius: 30px; font-size: 14px; font-weight: bold;
-            z-index: 3000; opacity: 0; transition: opacity 0.3s, bottom 0.3s;
-            pointer-events: none;
+        .toast { 
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0, 0, 0, 0.85); color: white; padding: 14px 28px; 
+            border-radius: 40px; font-size: 14px; font-weight: bold; z-index: 3000; 
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; 
         }
-        .toast.show { opacity: 1; bottom: 50px; }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
@@ -95,212 +97,130 @@
     <button class="btn btn-save" onclick="saveMap()">Save</button>
 </div>
 
-<div id="toast" class="toast">Saved!</div>
+<div id="editing-layer">
+    <input type="text" id="global-input" class="bubble-input" spellcheck="false">
+</div>
 
-<svg id="canvas">
-    <defs id="svg-defs"></defs>
-</svg>
+<div id="toast" class="toast">已儲存！</div>
+
+<svg id="canvas"><defs id="svg-defs"></defs></svg>
 
 <script>
     const width = window.innerWidth, height = window.innerHeight;
-    const baseRadius = 45, growth = 1.05;
+    const baseRadius = 50, growth = 1.05;
     const DEFAULT_TEXT = "Thought";
-    
-    const colorPalette = [
-        "#AAB1B7", "#8BA8C1", "#679BBF", "#4EA5A5", "#57B18A", "#8AB96E", "#BDB45D", "#D4A252", 
-        "#E28D52", "#ED7456", "#F45B5B", "#E05174", "#C1538E", "#9C5DA5", "#7B64B1", "#5E69B5", 
-        "#4A7FB9", "#3F94B7", "#38A8A8", "#32B78D"
-    ];
+    const colorPalette = ["#AAB1B7", "#8BA8C1", "#679BBF", "#4EA5A5", "#57B18A", "#8AB96E", "#BDB45D", "#D4A252", "#E28D52", "#ED7456", "#F45B5B", "#E05174", "#C1538E", "#9C5DA5", "#7B64B1", "#5E69B5", "#4A7FB9", "#3F94B7", "#38A8A8", "#32B78D"];
 
-    let nodes = [];
-    let links = [];
-    let sourceNode = null;
-    let selectedLinkId = null; 
-    let isSpaceDown = false;
-    let mousePos = { x: 0, y: 0 };
-    let hoveredNodeId = null;
+    let nodes = [], links = [], sourceNode = null, selectedLinkId = null, isSpaceDown = false, mousePos = { x: 0, y: 0 }, editingNode = null;
+    let dragDistance = 0;
 
     const svg = d3.select("#canvas");
     const container = svg.append("g");
     const defs = d3.select("#svg-defs");
-    
     const linkLayer = container.append("g").attr("class", "link-layer");
     const uiLayer = container.append("g").attr("class", "ui-layer"); 
     const nodeLayer = container.append("g").attr("class", "node-layer");
     const textLayer = container.append("g").attr("class", "text-layer");
     const topUiLayer = container.append("g").attr("class", "top-ui-layer");
-    
     const guideline = uiLayer.append("line").attr("class", "guideline").style("display", "none");
+    const globalInput = document.getElementById('global-input');
 
-    const zoom = d3.zoom()
-        .scaleExtent([0.1, 8])
-        .on("zoom", (event) => { container.attr("transform", event.transform); });
-
+    const zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", (e) => {
+        container.attr("transform", e.transform);
+        if(editingNode) updateInputPosition();
+    });
+    
     svg.call(zoom).on("dblclick.zoom", null);
 
     const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(180).strength(0.7))
-        .force("charge", d3.forceManyBody().strength(-50)) 
-        .force("collide", d3.forceCollide().radius(d => getRadius(d) + 30).strength(1))
+        .force("link", d3.forceLink(links).id(d => d.id).distance(200).strength(0.7))
+        .force("charge", d3.forceManyBody().strength(-100)) 
+        .force("collide", d3.forceCollide().radius(d => getRadius(d) + 40))
         .on("tick", ticked);
 
     function getRadius(d) { return baseRadius * Math.pow(growth, Math.min(d.count || 0, 100)); }
     function getLevelColor(count) { return colorPalette[Math.min(count || 0, 19)]; }
-    function getGradId(d) {
-        const sId = d.source.id !== undefined ? d.source.id : d.source;
-        const tId = d.target.id !== undefined ? d.target.id : d.target;
-        return `grad-${sId}-${tId}`;
-    }
-
-    function showToast(message) {
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2000);
+    function getGradId(d) { 
+        const s = d.source.id !== undefined ? d.source.id : d.source;
+        const t = d.target.id !== undefined ? d.target.id : d.target;
+        return `grad-${s}-${t}`; 
     }
 
     function update() {
-        // 1. 漸層
         const gradients = defs.selectAll(".link-gradient").data(links, d => getGradId(d));
         gradients.exit().remove();
-        const gEnter = gradients.enter().append("linearGradient")
-            .attr("class", "link-gradient")
-            .attr("id", d => getGradId(d))
-            .attr("gradientUnits", "userSpaceOnUse");
-        gEnter.append("stop").attr("offset", "10%").attr("class", "stop-start");
-        gEnter.append("stop").attr("offset", "90%").attr("class", "stop-end");
+        gradients.enter().append("linearGradient").attr("class", "link-gradient").attr("id", d => getGradId(d)).attr("gradientUnits", "userSpaceOnUse")
+            .call(g => { 
+                g.append("stop").attr("offset", "10%").attr("class", "stop-start"); 
+                g.append("stop").attr("offset", "90%").attr("class", "stop-end"); 
+            });
 
-        // 2. 線段組
         const linkGroups = linkLayer.selectAll(".link-group").data(links, d => getGradId(d));
         linkGroups.exit().remove();
         const lgEnter = linkGroups.enter().append("g").attr("class", "link-group");
-        
-        lgEnter.append("line").attr("class", "link-hitbox")
-            .on("click", (e, d) => {
-                e.stopPropagation();
-                selectedLinkId = (selectedLinkId === getGradId(d)) ? null : getGradId(d);
-                update();
-            });
+        lgEnter.append("line").attr("class", "link-hitbox").on("click", (e, d) => { 
+            e.stopPropagation(); 
+            selectedLinkId = (selectedLinkId === getGradId(d)) ? null : getGradId(d); 
+            update(); 
+        });
         lgEnter.append("line").attr("class", "link-line");
-
         linkLayer.selectAll(".link-line").classed("selected", d => getGradId(d) === selectedLinkId);
 
-        // 3. 線段刪除按鈕
         const linkDeleteBtns = topUiLayer.selectAll(".link-delete-btn").data(links, d => getGradId(d));
         linkDeleteBtns.exit().remove();
-        const btnEnter = linkDeleteBtns.enter().append("g").attr("class", "link-delete-btn delete-btn-group")
-            .on("click", (e, d) => {
-                e.stopPropagation();
-                links = links.filter(l => l !== d);
-                selectedLinkId = null;
-                recalculateCounts();
-                update();
-            });
-        btnEnter.append("circle").attr("class", "delete-btn-circle").attr("r", 10);
-        btnEnter.append("text").attr("class", "delete-btn-text").text("×").attr("text-anchor", "middle").attr("dy", 4.5);
-        
+        linkDeleteBtns.enter().append("g").attr("class", "link-delete-btn delete-btn-group").on("click", (e, d) => { 
+            e.stopPropagation(); links = links.filter(l => l !== d); selectedLinkId = null; recalculateCounts(); update(); 
+        }).call(g => { 
+            g.append("circle").attr("class", "delete-btn-circle").attr("r", 14); 
+            g.append("text").attr("class", "delete-btn-text").text("×").attr("text-anchor", "middle").attr("dy", 6); 
+        });
         topUiLayer.selectAll(".link-delete-btn").classed("visible", d => getGradId(d) === selectedLinkId);
 
-        // 4. 節點
         const nodeCircles = nodeLayer.selectAll(".node-circle").data(nodes, d => d.id);
         nodeCircles.exit().remove();
         const cEnter = nodeCircles.enter().append("g").attr("class", "node-circle")
-            .on("mouseenter", function(e, d) { 
-                hoveredNodeId = d.id;
-                const r = getRadius(d);
-                const scale = 1.05;
-
-                d3.select(this).select(".main-circle")
-                    .transition().duration(200)
-                    .attr("r", r * scale)
-                    .style("filter", "drop-shadow(0 4px 8px rgba(0,0,0,0.15))");
-
-                const textG = textLayer.select(`.node-group[data-id="${d.id}"]`);
-                textG.transition().duration(200)
-                    .attr("transform", `translate(${d.x},${d.y}) scale(${scale})`);
-            })
-            .on("mouseleave", function(e, d) { 
-                hoveredNodeId = null;
-                const r = getRadius(d);
-
-                d3.select(this).select(".main-circle")
-                    .transition().duration(800)
-                    .ease(d3.easeElastic.period(0.3))
-                    .attr("r", r)
-                    .style("filter", "none");
-
-                const textG = textLayer.select(`.node-group[data-id="${d.id}"]`);
-                textG.transition().duration(800)
-                    .ease(d3.easeElastic.period(0.3))
-                    .attr("transform", `translate(${d.x},${d.y}) scale(1)`);
-            })
-            .on("click", (e, d) => { 
-                if (isSpaceDown) return; 
-                e.stopPropagation(); 
-                handleConnect(d); 
-            })
             .call(d3.drag()
-                .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.2).restart(); d.fx = d.x; d.fy = d.y; })
-                .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
-                .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = d.x; d.fy = d.y; }));
+                .on("start", (e, d) => {
+                    dragDistance = 0;
+                    if (!e.active) simulation.alphaTarget(0.2).restart();
+                    d.fx = d.x; d.fy = d.y;
+                })
+                .on("drag", (e, d) => {
+                    dragDistance += Math.hypot(e.dx, e.dy);
+                    d.fx = e.x; d.fy = e.y;
+                })
+                .on("end", (e, d) => {
+                    if (!e.active) simulation.alphaTarget(0);
+                    if (dragDistance < 5) {
+                        handleNodeClick(e, d);
+                    }
+                })
+            );
         cEnter.append("circle").attr("class", "main-circle");
 
-        // 5. 標籤與 UI
         const nodeGroups = textLayer.selectAll(".node-group").data(nodes, d => d.id);
         nodeGroups.exit().remove();
-        const uiEnter = nodeGroups.enter().append("g").attr("class", "node-group")
-            .attr("data-id", d => d.id);
-        
-        uiEnter.append("circle").attr("class", "node-delete-trigger").attr("r", 10)
-            .on("click", (e, d) => { e.stopPropagation(); deleteNode(d); });
-        uiEnter.append("text").attr("class", "node-delete-x").text("×").attr("text-anchor", "middle").attr("dy", 3.5);
-        
-        uiEnter.append("text").attr("class", "bubble-label")
-            .on("click", (e, d) => { e.stopPropagation(); startEditing(d); })
-            .on("dblclick", (e, d) => { e.stopPropagation(); startEditing(d); });
-        
-        const fo = uiEnter.append("foreignObject").attr("class", "input-fo");
-        fo.append("xhtml:input").attr("class", "bubble-input")
-          .on("input", function(e, d) { d.text = this.value; })
-          .on("blur", (e, d) => { d.isEditing = false; update(); })
-          .on("keydown", (e, d) => { if(e.key === 'Enter') { d.isEditing = false; update(); } })
-          .on("mousedown", e => e.stopPropagation());
+        const uiEnter = nodeGroups.enter().append("g").attr("class", "node-group").attr("data-id", d => d.id);
+        uiEnter.append("circle").attr("class", "node-delete-trigger").attr("r", 14).on("click", (e, d) => { e.stopPropagation(); deleteNode(d); });
+        uiEnter.append("text").attr("class", "node-delete-x").text("×").attr("text-anchor", "middle").attr("dy", 5);
+        uiEnter.append("text").attr("class", "bubble-label");
 
+        nodeLayer.selectAll(".main-circle")
+            .attr("r", d => getRadius(d))
+            .attr("fill", d => getLevelColor(d.count));
+        
         nodeLayer.selectAll(".node-circle").classed("selected", d => d === sourceNode);
-        
-        nodeLayer.selectAll(".main-circle").each(function(d) {
-            if(d.id !== hoveredNodeId) {
-                d3.select(this).attr("r", getRadius(d)).attr("fill", getLevelColor(d.count));
-            } else {
-                d3.select(this).attr("fill", getLevelColor(d.count));
-            }
-        });
-        
+
         textLayer.selectAll(".node-group").each(function(d) {
             const r = getRadius(d);
             const g = d3.select(this);
-            g.classed("is-editing", d.isEditing);
-            
-            g.select(".node-delete-trigger").attr("cx", r * 0.7).attr("cy", -r * 0.7);
-            g.select(".node-delete-x").attr("x", r * 0.7).attr("y", -r * 0.7);
-            
+            g.select(".node-delete-trigger").attr("cx", r * 0.8).attr("cy", -r * 0.8);
+            g.select(".node-delete-x").attr("x", r * 0.8).attr("y", -r * 0.8);
             g.select(".bubble-label")
                 .text(d.text)
                 .attr("dy", 6)
-                .style("display", d.isEditing ? "none" : "block")
-                .style("font-size", Math.max(10, r * 0.28) + "px");
-                
-            g.select(".input-fo")
-                .attr("x", -r * 0.8).attr("y", -15).attr("width", r * 1.6).attr("height", 40)
-                .style("display", d.isEditing ? "block" : "none");
-
-            if (d.isEditing) {
-                const inputNode = g.select("input").node();
-                if (inputNode) { 
-                    inputNode.value = d.text; 
-                    inputNode.style.fontSize = Math.max(10, r * 0.28) + "px"; 
-                }
-            }
+                .style("font-size", Math.max(14, r * 0.3) + "px")
+                .style("opacity", (editingNode === d) ? 0 : 1);
         });
 
         simulation.nodes(nodes);
@@ -309,128 +229,120 @@
     }
 
     function ticked() {
-        linkLayer.selectAll(".link-group").each(function(d) {
-            const group = d3.select(this);
-            const gradId = getGradId(d);
-            const colorA = getLevelColor(d.source.count);
-            const colorB = getLevelColor(d.target.count);
-            const grad = defs.select(`#${gradId}`);
-            if (!grad.empty()) {
-                grad.attr("x1", d.source.x).attr("y1", d.source.y).attr("x2", d.target.x).attr("y2", d.target.y);
-                grad.select(".stop-start").attr("stop-color", colorA);
-                grad.select(".stop-end").attr("stop-color", colorB);
-            }
-            group.select(".link-line").attr("x1", d.source.x).attr("y1", d.source.y).attr("x2", d.target.x).attr("y2", d.target.y).attr("stroke", `url(#${gradId})`);
-            group.select(".link-hitbox").attr("x1", d.source.x).attr("y1", d.source.y).attr("x2", d.target.x).attr("y2", d.target.y);
-        });
-
-        topUiLayer.selectAll(".link-delete-btn").attr("transform", d => {
-            const midX = (d.source.x + d.target.x) / 2;
-            const midY = (d.source.y + d.target.y) / 2;
-            return `translate(${midX}, ${midY})`;
-        });
-
+        linkLayer.selectAll(".link-line").attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y).attr("stroke", d => `url(#${getGradId(d)})`);
+        linkLayer.selectAll(".link-hitbox").attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+        topUiLayer.selectAll(".link-delete-btn").attr("transform", d => `translate(${(d.source.x + d.target.x) / 2}, ${(d.source.y + d.target.y) / 2})`);
         nodeLayer.selectAll(".node-circle").attr("transform", d => `translate(${d.x},${d.y})`);
-        
-        textLayer.selectAll(".node-group").each(function(d) {
-            const scale = (d.id === hoveredNodeId) ? 1.05 : 1;
-            d3.select(this).attr("transform", `translate(${d.x},${d.y}) scale(${scale})`);
-        });
-
+        textLayer.selectAll(".node-group").attr("transform", d => `translate(${d.x},${d.y})`);
         if (sourceNode) drawGuideline();
+        if (editingNode) updateInputPosition();
     }
 
-    function handleConnect(d) {
-        if (!sourceNode) {
-            sourceNode = d; drawGuideline(); update();
-        } else if (sourceNode === d) {
-            sourceNode = null; guideline.style("display", "none"); update();
-        } else {
-            const exists = links.some(l => (l.source.id === sourceNode.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === sourceNode.id));
-            if (!exists) {
-                links.push({ source: sourceNode, target: d });
-                sourceNode.fx = null; sourceNode.fy = null;
-                d.fx = null; d.fy = null;
-                recalculateCounts();
-                update();
-                setTimeout(() => { nodes.forEach(n => { n.fx = n.x; n.fy = n.y; }); }, 1000);
-            }
-            sourceNode = null; guideline.style("display", "none"); update();
-        }
-    }
-
-    function createAndConnectNode(x, y) {
-        const newNode = { 
-            id: Date.now(), 
-            text: DEFAULT_TEXT, 
-            count: 0, 
-            x: x, y: y, 
-            fx: x, fy: y, 
-            isEditing: true 
-        };
-        nodes.push(newNode);
+    function handleNodeClick(e, d) {
+        if (isSpaceDown) return;
         
-        if (sourceNode) {
-            links.push({ source: sourceNode, target: newNode });
+        if (sourceNode && sourceNode !== d) {
+            handleConnect(d);
+        } else if (sourceNode === d) {
             sourceNode = null;
             guideline.style("display", "none");
+            startEditing(d);
+        } else if (!sourceNode) {
+            sourceNode = d;
+            update();
         }
-        
-        recalculateCounts();
-        update();
-        startEditing(newNode);
-    }
-
-    function recalculateCounts() {
-        nodes.forEach(n => {
-            const connected = links.filter(l => (l.source.id || l.source) === n.id || (l.target.id || l.target) === n.id);
-            n.count = connected.length;
-        });
-    }
-
-    function deleteNode(nodeToDelete) {
-        nodes = nodes.filter(n => n !== nodeToDelete);
-        links = links.filter(l => l.source !== nodeToDelete && l.target !== nodeToDelete);
-        if (sourceNode === nodeToDelete) sourceNode = null;
-        recalculateCounts(); update();
     }
 
     function startEditing(d) {
-        nodes.forEach(n => n.isEditing = false);
-        d.isEditing = true; update();
-        setTimeout(() => { 
-            const inputs = document.querySelectorAll(`.bubble-input`);
-            inputs.forEach(input => {
-                if (input.closest('.input-fo').style.display !== 'none') {
-                    input.focus();
-                    input.select();
-                }
-            });
+        if (editingNode === d) return;
+        editingNode = d;
+        update(); 
+        
+        globalInput.value = d.text;
+        globalInput.style.display = 'block';
+        updateInputPosition();
+        
+        setTimeout(() => {
+            globalInput.focus();
+            globalInput.setSelectionRange(0, globalInput.value.length);
         }, 50);
     }
 
+    function updateInputPosition() {
+        if (!editingNode) return;
+        const transform = d3.zoomTransform(svg.node());
+        const screenX = editingNode.x * transform.k + transform.x;
+        const screenY = editingNode.y * transform.k + transform.y;
+        const r = getRadius(editingNode) * transform.k;
+        
+        globalInput.style.left = `${screenX}px`;
+        globalInput.style.top = `${screenY}px`;
+        globalInput.style.width = `${Math.max(120, r * 1.8)}px`;
+        globalInput.style.fontSize = `${Math.max(16, r * 0.35)}px`; 
+    }
+
+    globalInput.addEventListener('input', (e) => { 
+        if(editingNode) {
+            editingNode.text = e.target.value;
+            updateInputPosition();
+        }
+    });
+
+    globalInput.addEventListener('blur', () => { 
+        if (!editingNode) return;
+        if (editingNode.text.trim() === "") editingNode.text = DEFAULT_TEXT;
+        editingNode = null; 
+        globalInput.style.display = 'none'; 
+        update(); 
+    });
+
+    globalInput.addEventListener('keydown', (e) => { 
+        if(e.key === 'Enter') {
+            e.preventDefault();
+            globalInput.blur();
+        }
+    });
+
+    function handleConnect(d) {
+        if (!sourceNode) return;
+        const exists = links.some(l => {
+            const sId = l.source.id !== undefined ? l.source.id : l.source;
+            const tId = l.target.id !== undefined ? l.target.id : l.target;
+            return (sId === sourceNode.id && tId === d.id) || (sId === d.id && tId === sourceNode.id);
+        });
+        if (!exists && sourceNode !== d) { 
+            links.push({ source: sourceNode, target: d }); 
+            recalculateCounts(); 
+        }
+        sourceNode = null; 
+        guideline.style("display", "none"); 
+        update();
+    }
+
     svg.on("click", function(e) {
-        if (isSpaceDown) return; 
+        if (isSpaceDown || editingNode) return;
         if (e.target.tagName === "svg" || e.target.id === "canvas") {
             const transform = d3.zoomTransform(svg.node());
             const [mx, my] = d3.pointer(e);
             const realX = (mx - transform.x) / transform.k;
             const realY = (my - transform.y) / transform.k;
-
-            if (sourceNode) {
-                // 連接狀態下點擊空白處：新增並自動連線
-                createAndConnectNode(realX, realY);
-            } else {
-                // 普通狀態點擊空白處：新增泡泡
-                selectedLinkId = null;
-                nodes.push({ id: Date.now(), text: DEFAULT_TEXT, count: 0, x: realX, y: realY, fx: realX, fy: realY, isEditing: true });
-                update();
-                startEditing(nodes[nodes.length-1]);
+            
+            const newNode = { id: "node-" + Date.now(), text: DEFAULT_TEXT, count: 0, x: realX, y: realY, fx: null, fy: null };
+            nodes.push(newNode);
+            
+            if (sourceNode) { 
+                links.push({ source: sourceNode, target: newNode }); 
+                sourceNode = null; 
+                guideline.style("display", "none"); 
             }
+            
+            recalculateCounts();
+            update();
+            startEditing(newNode);
         }
     });
 
-    svg.on("mousemove", function(e) {
+    svg.on("mousemove touchmove", function(e) {
         const transform = d3.zoomTransform(svg.node());
         const [mx, my] = d3.pointer(e);
         mousePos.x = (mx - transform.x) / transform.k;
@@ -446,61 +358,62 @@
             .attr("stroke", getLevelColor(sourceNode.count));
     }
 
-    function saveMap() {
-        const data = { 
-            nodes: nodes.map(n => ({ id: n.id, text: n.text, x: n.x, y: n.y, count: n.count })), 
-            links: links.map(l => ({ sourceId: l.source.id || l.source, targetId: l.target.id || l.target })) 
-        };
-        localStorage.setItem('concept_map_v2_0', JSON.stringify(data));
-        showToast("畫布儲存成功！");
+    function recalculateCounts() { 
+        nodes.forEach(n => {
+            n.count = links.filter(l => {
+                const sId = l.source.id !== undefined ? l.source.id : l.source;
+                const tId = l.target.id !== undefined ? l.target.id : l.target;
+                return sId === n.id || tId === n.id;
+            }).length;
+        }); 
+    }
+
+    function deleteNode(node) { 
+        nodes = nodes.filter(n => n !== node); 
+        links = links.filter(l => {
+            const sId = l.source.id !== undefined ? l.source.id : l.source;
+            const tId = l.target.id !== undefined ? l.target.id : l.target;
+            return sId !== node.id && tId !== node.id;
+        }); 
+        recalculateCounts(); 
+        update(); 
     }
 
     function clearMap() { if(confirm("確定要清空畫布嗎？")) { nodes = []; links = []; update(); } }
+    
+    function saveMap() { 
+        const data = { nodes, links: links.map(l => ({ sourceId: l.source.id || l.source, targetId: l.target.id || l.target })) };
+        localStorage.setItem('concept_map_v3_ios', JSON.stringify(data)); 
+        showToast("已儲存畫布！"); 
+    }
+
+    function showToast(m) { 
+        const t = document.getElementById("toast"); 
+        t.innerText = m; 
+        t.classList.add("show"); 
+        setTimeout(() => t.classList.remove("show"), 2000); 
+    }
 
     window.addEventListener('keydown', e => { 
-        if (e.code === 'Space') isSpaceDown = true; 
-        if (e.key === 'Escape') {
-            // 檢查是否有正在編輯的泡泡且文字為預設
-            const editingNode = nodes.find(n => n.isEditing);
-            if (editingNode && editingNode.text === DEFAULT_TEXT) {
-                deleteNode(editingNode);
-            } else if (editingNode) {
-                editingNode.isEditing = false;
-            }
-
-            if (sourceNode) { sourceNode = null; guideline.style("display", "none"); }
-            selectedLinkId = null; 
-            update();
-        }
-        if ((e.key === 'Delete' || e.key === 'Backspace') && !nodes.some(n => n.isEditing)) {
-            if (sourceNode) { deleteNode(sourceNode); sourceNode = null; }
-            if (selectedLinkId) {
-                links = links.filter(l => getGradId(l) !== selectedLinkId);
-                selectedLinkId = null; recalculateCounts(); update();
-            }
-        }
+        if (e.code === 'Space') isSpaceDown = true;
+        if (e.key === 'Escape' && editingNode) globalInput.blur();
     });
     window.addEventListener('keyup', e => { if (e.code === 'Space') isSpaceDown = false; });
 
-    function loadMap() {
-        const saved = localStorage.getItem('concept_map_v2_0');
-        if (saved) {
-            const data = JSON.parse(saved);
-            nodes = data.nodes.map(n => ({...n, fx: n.x, fy: n.y, isEditing: false}));
-            links = data.links.map(l => {
-                const s = nodes.find(n => n.id === l.sourceId), t = nodes.find(n => n.id === l.targetId);
-                return (s && t) ? { source: s, target: t } : null;
-            }).filter(d => d);
-            recalculateCounts();
-            update();
-        } else {
-            const startX = width/2, startY = height/2;
-            nodes = [{ id: 0, text: "Thought", count: 0, x: startX, y: startY, fx: startX, fy: startY, isEditing: false }];
-            update();
-        }
+    const saved = localStorage.getItem('concept_map_v3_ios');
+    if (saved) {
+        const data = JSON.parse(saved);
+        nodes = data.nodes;
+        links = data.links.map(l => ({ 
+            source: nodes.find(n => n.id === l.sourceId), 
+            target: nodes.find(n => n.id === l.targetId) 
+        })).filter(l => l.source && l.target);
+        recalculateCounts();
+        update();
+    } else {
+        nodes = [{ id: "initial-0", text: "Thought", count: 0, x: width/2, y: height/2, fx: null, fy: null }];
+        update();
     }
-
-    loadMap();
 </script>
 </body>
 </html>
